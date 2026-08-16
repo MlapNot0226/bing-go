@@ -21,7 +21,18 @@ function bingoName(number) { return `${letters[Math.floor((number - 1) / 15)]} $
 function spokenBingoName(number) { return `${['บี','ไอ','เอ็น','จี','โอ'][Math.floor((number-1)/15)]} หมายเลข ${number}`; }
 function save() { localStorage.setItem('binggo-drawn', JSON.stringify(drawn)); localStorage.setItem('binggo-card', JSON.stringify(card)); localStorage.setItem('binggo-marked', JSON.stringify([...marked])); }
 function showToast(message) { toast.textContent = message; toast.classList.add('show'); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove('show'), 2400); }
-function loadThaiVoice() { if(!('speechSynthesis' in window)) return; const voices=speechSynthesis.getVoices(); thaiVoice=voices.find(v=>v.lang.toLowerCase()==='th-th')||voices.find(v=>v.lang.toLowerCase().startsWith('th'))||null; }
+function loadThaiVoice() {
+  if(!('speechSynthesis' in window)) return;
+  const voices=speechSynthesis.getVoices();
+  const thaiVoices=voices.filter(v=>v.lang.toLowerCase().startsWith('th'));
+  const femaleNames=/premwadee|kanya|narisa|pattara|female|ผู้หญิง/i;
+  const preferredVoice=localStorage.getItem('binggo-voice')||'';
+  thaiVoice=thaiVoices.find(v=>v.voiceURI===preferredVoice)||thaiVoices.find(v=>femaleNames.test(v.name))||thaiVoices[0]||null;
+  const select=$('#voiceSelect'); const selected=localStorage.getItem('binggo-voice')||thaiVoice?.voiceURI||'';
+  select.innerHTML='<option value="">เสียงผู้หญิง (อัตโนมัติ)</option>';
+  thaiVoices.forEach(voice=>{const option=document.createElement('option');option.value=voice.voiceURI;option.textContent=voice.name;option.selected=voice.voiceURI===selected;select.appendChild(option);});
+  if(!thaiVoices.length) select.options[0].textContent='เสียงไทยของระบบ';
+}
 function speak(text) { if (!soundOn || !('speechSynthesis' in window)) return; speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.lang = 'th-TH'; if(thaiVoice) utterance.voice=thaiVoice; utterance.rate = .78; utterance.pitch=1.05; utterance.volume=1; speechSynthesis.speak(utterance); }
 
 function roomId(code) { return `binggo-${code.toLowerCase()}`; }
@@ -112,6 +123,7 @@ $('#newGameButton').addEventListener('click', () => { if (drawn.length && !confi
 $('#newCardButton').addEventListener('click', () => { if (marked.size && !confirm('สุ่มการ์ดใหม่และลบรอยที่แตะไว้ใช่ไหม?')) return; card=makeCard(); marked=new Set(); renderCard(); });
 $('#checkButton').addEventListener('click', () => { const won=hasBingo(); const wrong=[...marked].filter(i=>i!==12&&!drawn.includes(card[i])).length; $('#bingoStatus').textContent=won?'🎉 BINGO! ทุกเลขถูกเรียกแล้ว':'ยังไม่บิงโก — ต้องครบแถวและเป็นเลขที่เรียกแล้ว'; showToast(won?'🎉 BINGO! ตรวจเลขผ่านแล้ว!':wrong?`มี ${wrong} ช่องที่ผู้สุ่มยังไม่ได้เรียก`:'ยังไม่บิงโก สู้ต่อไป!'); if(won){speak('บิงโก!');if(role==='player'&&hostConnection?.open)hostConnection.send({type:'bingo'});} });
 $('#soundButton').addEventListener('click', (e) => { soundOn=!soundOn; e.currentTarget.textContent=soundOn?'🔊':'🔇'; showToast(soundOn?'เปิดเสียงแล้ว':'ปิดเสียงแล้ว'); });
+$('#voiceSelect').addEventListener('change',e=>{const uri=e.target.value;localStorage.setItem('binggo-voice',uri);const voices=speechSynthesis.getVoices().filter(v=>v.lang.toLowerCase().startsWith('th'));const femaleNames=/premwadee|kanya|narisa|pattara|female|ผู้หญิง/i;thaiVoice=voices.find(v=>v.voiceURI===uri)||voices.find(v=>femaleNames.test(v.name))||voices[0]||null;soundOn=true;$('#soundButton').textContent='🔊';speak('สวัสดีค่ะ พร้อมเล่นบิงโกแล้วค่ะ');});
 function showQrDialog() {
   const url = location.href.split('#')[0];
   $('#shareUrl').textContent=url;
