@@ -9,6 +9,7 @@ let hostConnection = null;
 let role = null;
 let activeRoom = '';
 let myName = localStorage.getItem('binggo-name') || '';
+let thaiVoice = null;
 const clientConnections = new Map();
 const roomPlayers = new Map();
 
@@ -17,9 +18,11 @@ const board = $('#numberBoard');
 const toast = $('#toast');
 
 function bingoName(number) { return `${letters[Math.floor((number - 1) / 15)]} ${number}`; }
+function spokenBingoName(number) { return `${['บี','ไอ','เอ็น','จี','โอ'][Math.floor((number-1)/15)]} หมายเลข ${number}`; }
 function save() { localStorage.setItem('binggo-drawn', JSON.stringify(drawn)); localStorage.setItem('binggo-card', JSON.stringify(card)); localStorage.setItem('binggo-marked', JSON.stringify([...marked])); }
 function showToast(message) { toast.textContent = message; toast.classList.add('show'); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove('show'), 2400); }
-function speak(text) { if (!soundOn || !('speechSynthesis' in window)) return; speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.lang = 'th-TH'; utterance.rate = .85; speechSynthesis.speak(utterance); }
+function loadThaiVoice() { if(!('speechSynthesis' in window)) return; const voices=speechSynthesis.getVoices(); thaiVoice=voices.find(v=>v.lang.toLowerCase()==='th-th')||voices.find(v=>v.lang.toLowerCase().startsWith('th'))||null; }
+function speak(text) { if (!soundOn || !('speechSynthesis' in window)) return; speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.lang = 'th-TH'; if(thaiVoice) utterance.voice=thaiVoice; utterance.rate = .78; utterance.pitch=1.05; utterance.volume=1; speechSynthesis.speak(utterance); }
 
 function roomId(code) { return `binggo-${code.toLowerCase()}`; }
 function makeRoomCode() { const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join(''); }
@@ -80,7 +83,7 @@ function drawNumber() {
   const number = available[Math.floor(Math.random() * available.length)];
   drawn.push(number); save(); renderBoard(); broadcastState();
   const ball = $('#currentBall'); ball.classList.remove('pop'); void ball.offsetWidth; ball.classList.add('pop');
-  speak(bingoName(number));
+  speak(spokenBingoName(number));
 }
 
 function makeCard() {
@@ -130,6 +133,8 @@ $('#copyLinkButton').addEventListener('click',async()=>{try{await navigator.clip
 document.addEventListener('keydown', e => { if (e.code==='Space' && !$('#callerPanel').classList.contains('hidden')) { e.preventDefault(); drawNumber(); } });
 
 $('#playerName').value=myName;
+loadThaiVoice();
+if('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged',loadThaiVoice);
 const invitedRoom=new URLSearchParams(location.search).get('room');
 if(invitedRoom){$('#roomInput').value=invitedRoom.toUpperCase();setLobbyMessage('ใส่ชื่อแล้วกดเข้าห้องได้เลย');}
 renderBoard(); renderCard();
