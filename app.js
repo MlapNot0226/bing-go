@@ -12,6 +12,19 @@ let myName = localStorage.getItem('binggo-name') || '';
 let thaiVoice = null;
 const clientConnections = new Map();
 const roomPlayers = new Map();
+let currentGame = 'bingo';
+let partyState = { emoji:null, emojiAnswers:[], scores:{}, tabooScore:0, tabooTurn:-1, spyName:'', spyWord:'', votes:{} };
+const emojiDeck = [
+  {emoji:'🦁👑',answer:'เดอะไลอ้อนคิง'},{emoji:'❄️👸',answer:'โฟรเซ่น'},{emoji:'👻🏠',answer:'บ้านผีสิง'},{emoji:'🐼🥋',answer:'กังฟูแพนด้า'},
+  {emoji:'🚢🧊💔',answer:'ไททานิค'},{emoji:'🕷️👨',answer:'สไปเดอร์แมน'},{emoji:'🌙⭐',answer:'พระจันทร์และดาว'},{emoji:'🐔🥚',answer:'ไก่กับไข่'},
+  {emoji:'🍎📱',answer:'แอปเปิล'},{emoji:'🐘🇹🇭',answer:'ช้างไทย'},{emoji:'☔🐱🐶',answer:'ฝนตกไม่ลืมหูลืมตา'},{emoji:'🔥🏠',answer:'ไฟไหม้บ้าน'}
+];
+const tabooDeck = [
+  {word:'โทรศัพท์',banned:['โทร','มือถือ','คุย','หน้าจอ']},{word:'ไอศกรีม',banned:['เย็น','หวาน','ละลาย','โคน']},{word:'ช้าง',banned:['ตัวใหญ่','งวง','งา','สัตว์']},
+  {word:'โรงเรียน',banned:['ครู','นักเรียน','เรียน','ห้อง']},{word:'ฟุตบอล',banned:['ลูกบอล','เตะ','ประตู','สนาม']},{word:'กาแฟ',banned:['ดื่ม','ขม','แก้ว','คาเฟ่']},
+  {word:'ทะเล',banned:['น้ำ','หาด','คลื่น','เค็ม']},{word:'ตู้เย็น',banned:['เย็น','อาหาร','ครัว','แช่']},{word:'วันเกิด',banned:['เค้ก','เทียน','ของขวัญ','อายุ']}
+];
+const spyWords = ['หมูกระทะ','ตลาดนัด','โรงพยาบาล','สนามบิน','สวนสัตว์','ร้านกาแฟ','โรงภาพยนตร์','ชายหาด','โรงเรียน','งานแต่งงาน'];
 
 const $ = (selector) => document.querySelector(selector);
 const board = $('#numberBoard');
@@ -40,29 +53,44 @@ function makeRoomCode() { const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return
 function setLobbyMessage(message) { $('#connectionNote').textContent=message; }
 function enterRoom(kind, code) {
   role=kind; activeRoom=code; document.body.classList.toggle('guest',kind==='player');
-  $('#lobby').classList.add('hidden'); $('#roomBar').classList.remove('hidden'); document.querySelector('.hero').classList.remove('hidden');
+  $('#lobby').classList.add('hidden'); $('#gameMenu').classList.add('hidden'); $('#roomBar').classList.remove('hidden');
   $('#roomCode').textContent=code; $('#connectionStatus').textContent='เชื่อมต่อแล้ว';
-  $('#callerPanel').classList.toggle('hidden',kind!=='host'); $('#playerPanel').classList.toggle('hidden',kind!=='player');
-  if(kind==='player') document.querySelectorAll('.mode').forEach((b,i)=>b.classList.toggle('active',i===1));
+  showCurrentGame();
+}
+function selectGame(game){currentGame=game;$('#gameMenu').classList.add('hidden');$('#lobby').classList.remove('hidden');const names={bingo:'BING GO! ONLINE',emoji:'ทายคำจาก EMOJI',taboo:'เกมคำต้องห้าม',spy:'สายลับคำลับ'};$('#selectedGameLabel').textContent=names[game];}
+function showCurrentGame(){
+  document.body.classList.toggle('bingo-game',currentGame==='bingo');
+  ['#callerPanel','#playerPanel','#emojiPanel','#tabooPanel','#spyPanel'].forEach(id=>$(id).classList.add('hidden'));document.querySelector('.hero').classList.add('hidden');
+  if(currentGame==='bingo'){document.querySelector('.hero').classList.remove('hidden');$('#callerPanel').classList.toggle('hidden',role!=='host');$('#playerPanel').classList.toggle('hidden',role!=='player');}
+  else {const panel=$(`#${currentGame}Panel`);panel.classList.remove('hidden');$(`#${currentGame}HostControls`)?.classList.toggle('hidden',role!=='host');if(currentGame==='emoji')$('#emojiPlayerControls').classList.toggle('hidden',role==='host');}
+  renderPartyGame();
 }
 function renderPlayers(winner='') {
   if(role!=='host') return;
   const names=[myName,...roomPlayers.values()];
   $('#playersList').innerHTML=names.map(name=>`<span class="player-chip${name===winner?' winner':''}">● ${escapeHtml(name)}</span>`).join('');
   $('#playerCount').textContent=`${names.length} คน`;
+  $('#connectionStatus').textContent=`ออนไลน์ • ${names.length} คน`;
+  if(currentGame==='spy')renderVoteButtons(names);
 }
 function escapeHtml(value) { const el=document.createElement('span'); el.textContent=value; return el.innerHTML; }
 function broadcast(payload) { clientConnections.forEach(conn=>{if(conn.open) conn.send(payload);}); }
-function broadcastState() { broadcast({type:'state',drawn,players:[myName,...roomPlayers.values()]}); }
+function publicPartyState(){return {...partyState,emoji:partyState.emoji?{emoji:partyState.emoji.emoji,answer:partyState.emojiRevealed?partyState.emoji.answer:''}:null,spyName:'',spyWord:'',spyActive:Boolean(partyState.spyWord)};}
+function broadcastState() { broadcast({type:'state',game:currentGame,drawn,party:publicPartyState(),players:[myName,...roomPlayers.values()]}); }
 function handleHostConnection(conn) {
   clientConnections.set(conn.peer,conn);
-  conn.on('open',()=>{ const name=String(conn.metadata?.name||'ผู้เล่น').slice(0,20); roomPlayers.set(conn.peer,name); renderPlayers(); conn.send({type:'welcome',drawn,players:[myName,...roomPlayers.values()]}); broadcastState(); });
-  conn.on('data',data=>{ if(data?.type==='join'){roomPlayers.set(conn.peer,String(data.name||'ผู้เล่น').slice(0,20));renderPlayers();broadcastState();} if(data?.type==='bingo'){const name=roomPlayers.get(conn.peer)||'ผู้เล่น';renderPlayers(name);showToast(`🎉 ${name} ตะโกน BINGO!`);speak(`${name} บิงโก`);} });
+  conn.on('open',()=>{ const name=String(conn.metadata?.name||'ผู้เล่น').slice(0,20); roomPlayers.set(conn.peer,name); renderPlayers(); conn.send({type:'welcome',game:currentGame,drawn,party:publicPartyState(),players:[myName,...roomPlayers.values()]}); broadcastState(); });
+  conn.on('data',data=>handlePlayerMessage(conn,data));
   conn.on('close',()=>{clientConnections.delete(conn.peer);roomPlayers.delete(conn.peer);renderPlayers();broadcastState();});
 }
 function handleGuestData(data) {
-  if(data?.type==='welcome'||data?.type==='state'){ drawn=Array.isArray(data.drawn)?data.drawn:[]; save(); renderBoard(); $('#connectionStatus').textContent=`ออนไลน์ • ${data.players?.length||1} คน`; }
+  if(data?.type==='welcome'||data?.type==='state'){ currentGame=data.game||'bingo';drawn=Array.isArray(data.drawn)?data.drawn:[];partyState=data.party||partyState;save();showCurrentGame();renderBoard();$('#connectionStatus').textContent=`ออนไลน์ • ${data.players?.length||1} คน`;renderVoteButtons(data.players||[]); }
   if(data?.type==='new-game'){drawn=[];marked=new Set();save();renderBoard();renderCard();showToast('เจ้าบ้านเริ่มเกมใหม่แล้ว');}
+  if(data?.type==='taboo-round'){partyState.tabooTurnName=data.turn;$('#tabooWord').textContent=myName===data.turn?'กำลังรับคำ…':'🔒';$('#tabooBanned').innerHTML='';$('#tabooTurn').textContent=`คนใบ้รอบนี้: ${data.turn}`;}
+  if(data?.type==='taboo-secret'){renderTabooCard(data.card,data.turn);}
+  if(data?.type==='spy-round'){partyState.votes={};$('#spyRole').textContent='กำลังรับบทบาท…';$('#spyWord').textContent='ห้ามให้คนอื่นเห็นหน้าจอ';renderVoteButtons(data.players||[]);}
+  if(data?.type==='spy-role'){renderSpyRole(data.spy,data.word);}
+  if(data?.type==='spy-reveal'){showToast(`สายลับคือ ${data.name}`);$('#spyFeed').innerHTML=`<span class="answer-chip correct">🕵️ สายลับคือ ${escapeHtml(data.name)}</span>`;}
 }
 function requireName() { const name=$('#playerName').value.trim(); if(!name){setLobbyMessage('กรุณาใส่ชื่อก่อน');$('#playerName').focus();return null;} myName=name.slice(0,20);localStorage.setItem('binggo-name',myName);return myName; }
 function createRoom() {
@@ -77,6 +105,29 @@ function joinRoom() {
   peer.on('open',()=>{hostConnection=peer.connect(roomId(code),{reliable:true,metadata:{name}});hostConnection.on('open',()=>{history.replaceState({},'',`?room=${code}`);enterRoom('player',code);hostConnection.send({type:'join',name});renderCard();});hostConnection.on('data',handleGuestData);hostConnection.on('close',()=>{$('#connectionStatus').textContent='หลุดจากห้อง';showToast('การเชื่อมต่อกับเจ้าบ้านสิ้นสุดแล้ว');});hostConnection.on('error',()=>setLobbyMessage('เชื่อมต่อห้องไม่สำเร็จ'));});
   peer.on('error',error=>{if(error.type==='peer-unavailable')setLobbyMessage('ไม่พบห้องนี้ หรือเจ้าบ้านปิดหน้าเว็บแล้ว');else setLobbyMessage('เข้าห้องไม่สำเร็จ กรุณาลองอีกครั้ง');});
 }
+
+function normalizeAnswer(value){return String(value||'').toLowerCase().replace(/[\s\-_.]/g,'');}
+function handlePlayerMessage(conn,data){
+  if(data?.type==='join'){roomPlayers.set(conn.peer,String(data.name||'ผู้เล่น').slice(0,20));renderPlayers();broadcastState();return;}
+  const name=roomPlayers.get(conn.peer)||'ผู้เล่น';
+  if(data?.type==='bingo'){renderPlayers(name);showToast(`🎉 ${name} ตะโกน BINGO!`);speak(`${name} บิงโก`);}
+  if(data?.type==='emoji-answer'&&partyState.emoji){const answer=String(data.answer||'').slice(0,40);const correct=normalizeAnswer(answer)===normalizeAnswer(partyState.emoji.answer);partyState.emojiAnswers=partyState.emojiAnswers.filter(a=>a.name!==name);partyState.emojiAnswers.push({name,answer,correct});if(correct&&!partyState.scores[name])partyState.scores[name]=1;else if(correct)partyState.scores[name]++;broadcastState();renderPartyGame();}
+  if(data?.type==='spy-vote'){partyState.votes[name]=String(data.name||'');broadcastState();renderPartyGame();}
+}
+function renderPartyGame(){
+  if(currentGame==='emoji'){
+    const q=partyState.emoji;$('#emojiPuzzle').textContent=q?.emoji||'🎬';$('#emojiRoundTitle').textContent=q?(partyState.emojiRevealed?`เฉลย: ${q.answer}`:'คำนี้คืออะไร?'):'รอเจ้าบ้านเริ่มเกม';$('#emojiScore').textContent=`${partyState.scores[myName]||0} คะแนน`;
+    $('#emojiFeed').innerHTML=(partyState.emojiAnswers||[]).map(a=>`<span class="answer-chip${a.correct?' correct':''}">${escapeHtml(a.name)}: ${partyState.emojiRevealed||role==='host'?escapeHtml(a.answer):'ตอบแล้ว ✓'}</span>`).join('');
+  }
+  if(currentGame==='taboo'){$('#tabooScore').textContent=`${partyState.tabooScore||0} คะแนน`;if(partyState.tabooTurnName)$('#tabooTurn').textContent=`คนใบ้รอบนี้: ${partyState.tabooTurnName}`;}
+  if(currentGame==='spy'){$('#spyTitle').textContent=partyState.spyWord||partyState.spyActive?'ทุกคนให้คำใบ้ทีละคน':'รอเจ้าบ้านแจกบทบาท';const counts={};Object.values(partyState.votes||{}).forEach(n=>counts[n]=(counts[n]||0)+1);$('#spyFeed').innerHTML=Object.entries(counts).map(([n,c])=>`<span class="answer-chip">${escapeHtml(n)} ${c} โหวต</span>`).join('');}
+}
+function renderTabooCard(cardData,turn){$('#tabooWord').textContent=cardData.word;$('#tabooBanned').innerHTML=cardData.banned.map(w=>`<span>${escapeHtml(w)}</span>`).join('');$('#tabooTurn').textContent=`คนใบ้รอบนี้: ${turn}`;}
+function renderSpyRole(isSpy,word){$('#spyRoleCard').classList.toggle('spy',isSpy);$('#spyRole').textContent=isSpy?'คุณคือสายลับ!':'คุณเป็นชาวบ้าน';$('#spyWord').textContent=isSpy?'เนียนให้ดี แล้วเดาคำลับให้ได้':`คำลับ: ${word}`;}
+function renderVoteButtons(players){const names=players.filter(n=>n!==myName);$('#spyVoteButtons').innerHTML=names.map(n=>`<button type="button" data-vote="${escapeHtml(n)}">${escapeHtml(n)}</button>`).join('');document.querySelectorAll('[data-vote]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-vote]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');if(role==='player'&&hostConnection?.open)hostConnection.send({type:'spy-vote',name:b.dataset.vote});else{partyState.votes[myName]=b.dataset.vote;broadcastState();renderPartyGame();}}));}
+function nextEmoji(){const available=emojiDeck.filter(q=>q!==partyState.emoji);partyState.emoji=available[Math.floor(Math.random()*available.length)];partyState.emojiAnswers=[];partyState.emojiRevealed=false;broadcastState();renderPartyGame();}
+function nextTaboo(){const entries=[{id:'host',name:myName},...Array.from(roomPlayers.entries()).map(([id,name])=>({id,name}))];partyState.tabooTurn=(partyState.tabooTurn+1)%entries.length;const turn=entries[partyState.tabooTurn];const cardData=tabooDeck[Math.floor(Math.random()*tabooDeck.length)];partyState.tabooTurnName=turn.name;broadcast({type:'taboo-round',turn:turn.name});if(turn.id==='host')renderTabooCard(cardData,turn.name);else clientConnections.get(turn.id)?.send({type:'taboo-secret',card:cardData,turn:turn.name});$('#tabooWord').textContent=turn.id==='host'?cardData.word:'🔒';if(turn.id!=='host')$('#tabooBanned').innerHTML='';broadcastState();}
+function startSpy(){const entries=[{id:'host',name:myName},...Array.from(roomPlayers.entries()).map(([id,name])=>({id,name}))];if(entries.length<3)return showToast('เกมนี้ควรมีอย่างน้อย 3 คน');const spy=entries[Math.floor(Math.random()*entries.length)];const word=spyWords[Math.floor(Math.random()*spyWords.length)];partyState.spyName=spy.name;partyState.spyWord=word;partyState.votes={};broadcast({type:'spy-round',players:entries.map(x=>x.name)});entries.forEach(p=>{if(p.id==='host')renderSpyRole(p===spy,word);else clientConnections.get(p.id)?.send({type:'spy-role',spy:p===spy,word});});renderVoteButtons(entries.map(x=>x.name));broadcastState();renderPartyGame();}
 
 function renderBoard() {
   board.innerHTML = '';
@@ -136,17 +187,25 @@ $('#shareButton').addEventListener('click', async () => {
   showQrDialog();
 });
 $('#roomShareButton').addEventListener('click',showQrDialog);
+document.querySelectorAll('[data-game]').forEach(button=>button.addEventListener('click',()=>selectGame(button.dataset.game)));
+$('#backMenuButton').addEventListener('click',()=>{$('#lobby').classList.add('hidden');$('#gameMenu').classList.remove('hidden');history.replaceState({},'',location.pathname);});
 $('#createRoomButton').addEventListener('click',createRoom);
 $('#joinRoomButton').addEventListener('click',joinRoom);
 $('#roomInput').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom();});
 $('#closeShareButton').addEventListener('click',()=>$('#shareDialog').close());
 $('#shareDialog').addEventListener('click',e=>{if(e.target===$('#shareDialog'))$('#shareDialog').close();});
 $('#copyLinkButton').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(location.href.split('#')[0]);showToast('คัดลอกลิงก์แล้ว');}catch{showToast('เบราว์เซอร์ไม่อนุญาตให้คัดลอกอัตโนมัติ');}});
+$('#emojiNext').addEventListener('click',nextEmoji);
+$('#emojiReveal').addEventListener('click',()=>{if(!partyState.emoji)return;partyState.emojiRevealed=true;broadcastState();renderPartyGame();});
+function submitEmoji(){const answer=$('#emojiAnswer').value.trim();if(!answer)return;if(role==='player'&&hostConnection?.open)hostConnection.send({type:'emoji-answer',answer});$('#emojiAnswer').value='';showToast('ส่งคำตอบแล้ว');}
+$('#emojiSubmit').addEventListener('click',submitEmoji);$('#emojiAnswer').addEventListener('keydown',e=>{if(e.key==='Enter')submitEmoji();});
+$('#tabooNext').addEventListener('click',nextTaboo);$('#tabooSkip').addEventListener('click',nextTaboo);$('#tabooCorrect').addEventListener('click',()=>{partyState.tabooScore++;showToast('ได้ 1 คะแนน!');nextTaboo();});
+$('#spyStart').addEventListener('click',startSpy);$('#spyReveal').addEventListener('click',()=>{if(!partyState.spyName)return;broadcast({type:'spy-reveal',name:partyState.spyName});showToast(`สายลับคือ ${partyState.spyName}`);$('#spyFeed').innerHTML+=`<span class="answer-chip correct">🕵️ สายลับคือ ${escapeHtml(partyState.spyName)}</span>`;});
 document.addEventListener('keydown', e => { if (e.code==='Space' && !$('#callerPanel').classList.contains('hidden')) { e.preventDefault(); drawNumber(); } });
 
 $('#playerName').value=myName;
 loadThaiVoice();
 if('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged',loadThaiVoice);
 const invitedRoom=new URLSearchParams(location.search).get('room');
-if(invitedRoom){$('#roomInput').value=invitedRoom.toUpperCase();setLobbyMessage('ใส่ชื่อแล้วกดเข้าห้องได้เลย');}
+if(invitedRoom){$('#gameMenu').classList.add('hidden');$('#lobby').classList.remove('hidden');$('#backMenuButton').classList.add('hidden');$('#roomInput').value=invitedRoom.toUpperCase();setLobbyMessage('ใส่ชื่อแล้วกดเข้าห้องได้เลย');}
 renderBoard(); renderCard();

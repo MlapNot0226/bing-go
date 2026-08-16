@@ -23,9 +23,20 @@
   </header>
 
   <main>
-    <section class="lobby" id="lobby">
+    <section class="game-menu" id="gameMenu">
+      <div class="menu-heading"><p class="eyebrow">เกมประจำบ้าน</p><h1>คืนนี้เล่น<br><em>อะไรดี?</em></h1><p>เลือกเกม แล้วสร้างห้องให้ทุกคนสแกน QR เข้ามาสนุกด้วยกัน</p></div>
+      <div class="game-grid">
+        <button class="game-tile bingo-tile" data-game="bingo"><span>75</span><div><small>เกมคลาสสิก</small><h2>Bing Go!</h2><p>สุ่มเลข แตะการ์ด ใครครบแถวก่อนชนะ</p></div></button>
+        <button class="game-tile emoji-tile" data-game="emoji"><span>🍿🎬</span><div><small>ทายภาพ</small><h2>ทายคำจาก Emoji</h2><p>เห็นอีโมจิแล้วรีบพิมพ์คำตอบให้ถูก</p></div></button>
+        <button class="game-tile taboo-tile" data-game="taboo"><span>🤫</span><div><small>ใบ้คำ</small><h2>คำต้องห้าม</h2><p>ใบ้ให้เพื่อนทายโดยห้ามหลุดคำสำคัญ</p></div></button>
+        <button class="game-tile spy-tile" data-game="spy"><span>🕵️</span><div><small>จับพิรุธ</small><h2>สายลับคำลับ</h2><p>ทุกคนรู้คำเดียวกัน ยกเว้นสายลับ</p></div></button>
+      </div>
+    </section>
+
+    <section class="lobby hidden" id="lobby">
       <div class="lobby-copy">
-        <p class="eyebrow">BING GO! ONLINE</p>
+        <button class="text-button back-menu" id="backMenuButton" type="button">← เลือกเกมอื่น</button>
+        <p class="eyebrow" id="selectedGameLabel">BING GO! ONLINE</p>
         <h1>รวมแก๊ง<br><em>เข้าห้อง!</em></h1>
         <p>สร้างห้องแล้วให้เพื่อนสแกน QR หรือกรอกรหัส ก็พร้อมเล่นบิงโกด้วยกันได้ทันที</p>
       </div>
@@ -87,6 +98,29 @@
         <p id="bingoStatus">ยังไม่บิงโก — สู้ต่อไป!</p>
         <button class="primary bingo-button" id="checkButton" type="button">ตรวจ BINGO!</button>
       </div>
+    </section>
+
+    <section class="panel party-panel hidden" id="emojiPanel">
+      <div class="party-head"><div><p class="section-label">ทายคำจาก Emoji</p><h2 id="emojiRoundTitle">รอเจ้าบ้านเริ่มเกม</h2></div><strong id="emojiScore">0 คะแนน</strong></div>
+      <div class="emoji-puzzle" id="emojiPuzzle">🎬</div>
+      <div class="party-answer" id="emojiPlayerControls"><input id="emojiAnswer" placeholder="พิมพ์คำตอบที่นี่"><button class="primary" id="emojiSubmit" type="button">ส่งคำตอบ</button></div>
+      <div class="host-controls hidden" id="emojiHostControls"><button class="primary" id="emojiNext" type="button">เริ่มข้อถัดไป</button><button class="text-button" id="emojiReveal" type="button">เฉลย</button></div>
+      <div class="answers-feed" id="emojiFeed"></div>
+    </section>
+
+    <section class="panel party-panel hidden" id="tabooPanel">
+      <div class="party-head"><div><p class="section-label">คำต้องห้าม</p><h2>ใบ้คำโดยห้ามพูดคำด้านล่าง</h2></div><strong id="tabooScore">0 คะแนน</strong></div>
+      <div class="secret-card"><small>คำที่ต้องใบ้</small><h2 id="tabooWord">รอเริ่มเกม</h2><div id="tabooBanned"></div></div>
+      <p class="turn-label" id="tabooTurn">เจ้าบ้านกดเริ่มรอบ</p>
+      <div class="host-controls hidden" id="tabooHostControls"><button class="primary" id="tabooNext" type="button">สุ่มคำใหม่</button><button class="text-button" id="tabooCorrect" type="button">✓ ทายถูก</button><button class="text-button" id="tabooSkip" type="button">ข้าม</button></div>
+    </section>
+
+    <section class="panel party-panel hidden" id="spyPanel">
+      <div class="party-head"><div><p class="section-label">สายลับคำลับ</p><h2 id="spyTitle">รอเจ้าบ้านแจกบทบาท</h2></div><strong id="spyRound">รอบใหม่</strong></div>
+      <div class="role-card" id="spyRoleCard"><small>บทบาทของคุณ</small><h2 id="spyRole">?</h2><p id="spyWord">เก็บหน้าจอนี้เป็นความลับ</p></div>
+      <div class="vote-area" id="spyVoteArea"><p>คิดว่าใครเป็นสายลับ?</p><div id="spyVoteButtons"></div></div>
+      <div class="host-controls hidden" id="spyHostControls"><button class="primary" id="spyStart" type="button">แจกบทบาทใหม่</button><button class="text-button" id="spyReveal" type="button">เฉลยสายลับ</button></div>
+      <div class="answers-feed" id="spyFeed"></div>
     </section>
   </main>
 
