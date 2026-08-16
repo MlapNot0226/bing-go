@@ -187,6 +187,7 @@ $('#shareButton').addEventListener('click', async () => {
   showQrDialog();
 });
 $('#roomShareButton').addEventListener('click',showQrDialog);
+$('#homeMenuButton').addEventListener('click',()=>{const message=role==='host'?'ออกจากห้องและปิดเกมสำหรับผู้เล่นทุกคนใช่ไหม?':'ออกจากห้องและกลับหน้าเมนูใช่ไหม?';if(!confirm(message))return;try{peer?.destroy();}catch{}location.href=`${location.pathname}?v=7`;});
 document.querySelectorAll('[data-game]').forEach(button=>button.addEventListener('click',()=>selectGame(button.dataset.game)));
 $('#backMenuButton').addEventListener('click',()=>{$('#lobby').classList.add('hidden');$('#gameMenu').classList.remove('hidden');history.replaceState({},'',location.pathname);});
 $('#createRoomButton').addEventListener('click',createRoom);
