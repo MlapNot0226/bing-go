@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#fff7e8">
+  <title>Bing Go! — บิงโกในบ้าน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chonburi&family=Noto+Sans+Thai:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#">BING <span>GO!</span></a>
+    <div class="top-actions">
+      <button class="share-button" id="shareButton" type="button">แชร์เกม</button>
+      <button class="icon-button" id="soundButton" type="button" aria-label="เปิดหรือปิดเสียง">🔊</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">เกมประจำบ้าน</p>
+      <h1>พร้อมแล้วก็<br><em>ลุยเลย!</em></h1>
+      <p>สุ่มเลข แจกการ์ด แล้วมาดูกันว่าใครจะตะโกน “บิงโก!” ก่อน</p>
+      <div class="mode-switch" role="tablist" aria-label="เลือกโหมด">
+        <button class="mode active" data-mode="caller" type="button">🎙️ ผู้สุ่มเลข</button>
+        <button class="mode" data-mode="player" type="button">🎟️ การ์ดผู้เล่น</button>
+      </div>
+    </section>
+
+    <section class="panel caller-panel" id="callerPanel">
+      <div class="draw-area">
+        <div class="ball-wrap">
+          <div class="ball" id="currentBall"><span class="ball-letter">–</span><strong class="ball-number">?</strong></div>
+          <span class="spark spark-one">✦</span><span class="spark spark-two">✦</span>
+        </div>
+        <div>
+          <p class="section-label">เลขล่าสุด</p>
+          <h2 id="callText">เริ่มเกมกันเลย</h2>
+          <p id="remainingText">เหลืออีก 75 ลูก</p>
+          <button class="primary" id="drawButton" type="button">สุ่มเลขถัดไป <span>→</span></button>
+        </div>
+      </div>
+
+      <div class="history-head">
+        <div><p class="section-label">เลขที่ออกแล้ว</p><h3><span id="drawCount">0</span> / 75 ลูก</h3></div>
+        <button class="text-button" id="newGameButton" type="button">↻ เริ่มเกมใหม่</button>
+      </div>
+      <div class="number-board" id="numberBoard" aria-label="ตารางเลขบิงโก"></div>
+    </section>
+
+    <section class="panel player-panel hidden" id="playerPanel">
+      <div class="player-heading">
+        <div><p class="section-label">การ์ดของฉัน</p><h2>แตะเลขที่ผู้ประกาศเรียก</h2></div>
+        <button class="text-button" id="newCardButton" type="button">✦ สุ่มการ์ดใหม่</button>
+      </div>
+      <div class="bingo-card" id="bingoCard"></div>
+      <div class="player-actions">
+        <p id="bingoStatus">ยังไม่บิงโก — สู้ต่อไป!</p>
+        <button class="primary bingo-button" id="checkButton" type="button">ตรวจ BINGO!</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <dialog class="share-dialog" id="shareDialog">
+    <button class="dialog-close" id="closeShareButton" type="button" aria-label="ปิด">×</button>
+    <p class="section-label">ชวนทุกคนมาเล่น</p>
+    <h2>สแกนเพื่อเปิด Bing Go!</h2>
+    <div class="qr-box"><img id="qrImage" alt="QR Code สำหรับเปิดเกม"></div>
+    <p class="share-url" id="shareUrl"></p>
+    <button class="primary" id="copyLinkButton" type="button">คัดลอกลิงก์</button>
+    <small>QR ใช้งานได้เมื่อเปิดเว็บผ่านลิงก์ เช่น GitHub Pages หรือเซิร์ฟเวอร์ในบ้าน</small>
+  </dialog>
+  <script src="app.js"></script>
+</body>
+</html>
