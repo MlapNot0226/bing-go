@@ -20,7 +20,29 @@
   </header>
 
   <main>
-    <section class="hero">
+    <section class="lobby" id="lobby">
+      <div class="lobby-copy">
+        <p class="eyebrow">BING GO! ONLINE</p>
+        <h1>รวมแก๊ง<br><em>เข้าห้อง!</em></h1>
+        <p>สร้างห้องแล้วให้เพื่อนสแกน QR หรือกรอกรหัส ก็พร้อมเล่นบิงโกด้วยกันได้ทันที</p>
+      </div>
+      <div class="lobby-card">
+        <label for="playerName">ชื่อของคุณ</label>
+        <input id="playerName" maxlength="20" placeholder="เช่น ป๊า, แม่, น้องมิน">
+        <button class="primary lobby-primary" id="createRoomButton" type="button">สร้างห้องใหม่ <span>→</span></button>
+        <div class="or"><span>หรือเข้าห้องที่มีอยู่</span></div>
+        <label for="roomInput">รหัสห้อง</label>
+        <div class="join-row"><input id="roomInput" maxlength="6" placeholder="ABC123"><button class="primary" id="joinRoomButton" type="button">เข้าห้อง</button></div>
+        <p class="connection-note" id="connectionNote"></p>
+      </div>
+    </section>
+
+    <section class="room-bar hidden room-only" id="roomBar">
+      <div><span class="live-dot"></span><small>ห้อง</small> <strong id="roomCode">------</strong></div>
+      <div class="room-actions"><span id="connectionStatus">กำลังเชื่อมต่อ…</span><button class="text-button" id="roomShareButton" type="button">แชร์ QR</button></div>
+    </section>
+
+    <section class="hero hidden room-only">
       <p class="eyebrow">เกมประจำบ้าน</p>
       <h1>พร้อมแล้วก็<br><em>ลุยเลย!</em></h1>
       <p>สุ่มเลข แจกการ์ด แล้วมาดูกันว่าใครจะตะโกน “บิงโก!” ก่อน</p>
@@ -30,7 +52,8 @@
       </div>
     </section>
 
-    <section class="panel caller-panel" id="callerPanel">
+    <section class="panel caller-panel hidden room-only" id="callerPanel">
+      <div class="players-strip"><div><p class="section-label">ผู้เล่นในห้อง</p><div class="players-list" id="playersList"></div></div><span id="playerCount">1 คน</span></div>
       <div class="draw-area">
         <div class="ball-wrap">
           <div class="ball" id="currentBall"><span class="ball-letter">–</span><strong class="ball-number">?</strong></div>
@@ -51,7 +74,7 @@
       <div class="number-board" id="numberBoard" aria-label="ตารางเลขบิงโก"></div>
     </section>
 
-    <section class="panel player-panel hidden" id="playerPanel">
+    <section class="panel player-panel hidden room-only" id="playerPanel">
       <div class="player-heading">
         <div><p class="section-label">การ์ดของฉัน</p><h2>แตะเลขที่ผู้ประกาศเรียก</h2></div>
         <button class="text-button" id="newCardButton" type="button">✦ สุ่มการ์ดใหม่</button>
@@ -74,6 +97,7 @@
     <button class="primary" id="copyLinkButton" type="button">คัดลอกลิงก์</button>
     <small>QR ใช้งานได้เมื่อเปิดเว็บผ่านลิงก์ เช่น GitHub Pages หรือเซิร์ฟเวอร์ในบ้าน</small>
   </dialog>
+  <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
